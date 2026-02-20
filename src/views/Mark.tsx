@@ -4,9 +4,11 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
-import { Loader2, FileDown } from 'lucide-react';
+import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Loader2, FileDown, Search } from 'lucide-react';
 import MarkingCard from '@/components/MarkingCard';
 import { exportToExcel } from '@/utils/excel';
+import { toast } from 'sonner';
 
 // Define the record type based on usage
 interface RecordType {
@@ -22,7 +24,39 @@ export default function Mark() {
   const [allIncluded, setAllIncluded] = useState(false);
   const [status, setStatus] = useState<'waiting' | 'loading' | 'loaded'>('waiting');
   const [svmode, setSvmode] = useState(false);
+  const [openSearch, setOpenSearch] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Keyboard shortcut for search
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault()
+        setOpenSearch((open) => !open)
+      }
+    }
+    document.addEventListener("keydown", down)
+    return () => document.removeEventListener("keydown", down)
+  }, [])
+  
+  const handleJumpToRecord = (index: number) => {
+     const page = Math.floor(index / pageSize) + 1;
+     setCurrentPage(page);
+     setOpenSearch(false);
+     
+     // Wait for render then scroll
+     setTimeout(() => {
+        const element = document.getElementById(`record-${index}`);
+        if (element) {
+           element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+           // Flash effect
+           element.classList.add('ring-2', 'ring-primary', 'ring-offset-2');
+           setTimeout(() => element.classList.remove('ring-2', 'ring-primary', 'ring-offset-2'), 2000);
+        } else {
+           toast.warning("跳转目标未在当前页面渲染，请手动翻页");
+        }
+     }, 100);
+  };
 
   // Computed paged data
   const pagedData = useMemo(() => {
@@ -154,12 +188,52 @@ export default function Mark() {
         </div>
 
         {allRecords.length > 0 && (
-           <Button onClick={handleExport} variant="outline" className="gap-2">
-              <FileDown className="h-4 w-4" />
-              导出Excel
-           </Button>
+           <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                className="w-full justify-between text-muted-foreground sm:w-64"
+                onClick={() => setOpenSearch(true)}
+              >
+                 <span className="flex items-center gap-2">
+                    <Search className="h-4 w-4" />
+                    <span>搜索歌曲...</span>
+                 </span>
+                 <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100">
+                    <span className="text-xs">⌘</span>K
+                 </kbd>
+              </Button>
+              
+              <Button onClick={handleExport} variant="outline" className="gap-2">
+                 <FileDown className="h-4 w-4" />
+                 导出Excel
+              </Button>
+           </div>
         )}
       </div>
+
+      <CommandDialog open={openSearch} onOpenChange={setOpenSearch}>
+        <CommandInput placeholder="输入标题、P主或歌手搜索..." />
+        <CommandList>
+          <CommandEmpty>未找到结果.</CommandEmpty>
+          <CommandGroup heading="歌曲列表">
+            {allRecords.map((record, index) => (
+              <CommandItem
+                key={index}
+                value={`${record.title || ''} ${record.producer || ''} ${record.vocalist || ''} ${record.bvid || ''} ${index}`}
+                onSelect={() => handleJumpToRecord(index)}
+              >
+                <div className="flex flex-col">
+                   <span className="font-medium">{record.title}</span>
+                   <span className="text-xs text-muted-foreground">
+                      {record.producer ? `P主: ${record.producer} ` : ''}
+                      {record.vocalist ? `歌手: ${record.vocalist}` : ''}
+                   </span>
+                </div>
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        </CommandList>
+      </CommandDialog>
 
       {status === 'loading' && (
          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">

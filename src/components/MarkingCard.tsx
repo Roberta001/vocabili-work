@@ -90,7 +90,9 @@ export default function MarkingCard({ record, include, onIncludeChange, index, s
   ];
 
   return (
-    <Card className={cn("w-full transition-all duration-300 hover:shadow-lg", 
+    <Card 
+      id={`record-${index}`}
+      className={cn("w-full transition-all duration-300 hover:shadow-lg scroll-mt-24", 
       record.status === 'auto' ? "bg-yellow-100/50 dark:bg-yellow-900/20" : 
       record.status === 'done' ? "bg-sky-100/50 dark:bg-sky-900/20" : ""
     )}>

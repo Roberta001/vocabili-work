@@ -9,16 +9,25 @@ import { useDebounce } from "@/hooks/use-debounce";
 interface MarkingTagsProps {
   value: string; // Comma separated string "tag1、tag2"
   onChange: (value: string) => void;
+  onInputChange?: (value: string) => void;
   type: string;
   useHint: boolean;
+  hasError?: boolean;
 }
 
-export default function MarkingTags({ value, onChange, type, useHint }: MarkingTagsProps) {
+export default function MarkingTags({ value, onChange, onInputChange, type, useHint, hasError }: MarkingTagsProps) {
   const [open, setOpen] = useState(false);
   const [inputValue, setInputValue] = useState("");
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const debouncedInput = useDebounce(inputValue, 300);
   const wrapperRef = useRef<HTMLDivElement>(null);
+
+  const handleInputChange = (val: string) => {
+    setInputValue(val);
+    if (onInputChange) {
+      onInputChange(val);
+    }
+  };
 
   const tags = value ? value.split("、").filter(Boolean) : [];
 
@@ -59,7 +68,7 @@ export default function MarkingTags({ value, onChange, type, useHint }: MarkingT
       const newTags = [...tags, tag];
       onChange(newTags.join("、"));
     }
-    setInputValue("");
+    handleInputChange("");
     setOpen(false);
   };
 
@@ -93,7 +102,8 @@ export default function MarkingTags({ value, onChange, type, useHint }: MarkingT
     <div className="flex flex-col gap-2 w-full relative" ref={wrapperRef}>
       <div className={cn(
         "flex flex-wrap items-center gap-1.5 p-2 rounded-md border bg-background ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2",
-        "min-h-[42px]"
+        "min-h-[42px]",
+        hasError && "border-destructive focus-within:ring-destructive"
       )}>
         {tags.map((tag) => (
           <Badge key={tag} variant="secondary" className="pr-1 h-6">
@@ -115,7 +125,7 @@ export default function MarkingTags({ value, onChange, type, useHint }: MarkingT
           placeholder={tags.length === 0 ? "输入标签..." : ""}
           value={inputValue}
           onChange={(e) => {
-            setInputValue(e.target.value);
+            handleInputChange(e.target.value);
             setOpen(true);
           }}
           onFocus={() => setOpen(true)}

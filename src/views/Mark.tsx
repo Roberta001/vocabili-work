@@ -169,9 +169,12 @@ function MarkContent() {
     return ['name', 'vocal', 'author', 'synthesizer', 'copyright', 'type'];
   };
 
-  const getIncompleteRecords = () => {
+  const getProblematicRecords = () => {
     const reqFields = getRequiredFields(svmode);
+    const tagFields = svmode ? ['synthesizer'] : ['vocal', 'author', 'synthesizer'];
+    
     const incomplete: number[] = [];
+    const unconfirmed: number[] = [];
 
     allRecords.forEach((record, index) => {
       if (includeEntries[index]) {
@@ -182,18 +185,26 @@ function MarkContent() {
         if (!isComplete) {
           incomplete.push(index);
         }
+
+        const hasUnconfirmed = tagFields.some(field => {
+          const val = record[`_unconfirmed_${field}`];
+          return !!val && val.trim() !== '';
+        });
+        if (hasUnconfirmed) {
+          unconfirmed.push(index);
+        }
       }
     });
 
-    return incomplete;
+    return { incomplete, unconfirmed };
   };
 
   // Handle export
   const handleExport = () => {
     if (!keepExcluded) {
-      const incomplete = getIncompleteRecords();
-      if (incomplete.length > 0) {
-        setIncompleteIndices(incomplete);
+      const { incomplete, unconfirmed } = getProblematicRecords();
+      if (incomplete.length > 0 || unconfirmed.length > 0) {
+        setIncompleteIndices([...new Set([...incomplete, ...unconfirmed])]);
         setExportDialogOpen(false);
         setIncompleteDialogOpen(true);
         return;
@@ -536,9 +547,15 @@ function MarkContent() {
               <Dialog open={incompleteDialogOpen} onOpenChange={setIncompleteDialogOpen}>
                  <DialogContent>
                     <DialogHeader>
-                       <DialogTitle className="text-destructive">存在未填写完整的歌曲</DialogTitle>
+                       <DialogTitle className="text-destructive">存在未填写完成的歌曲</DialogTitle>
                        <DialogDescription>
-                          您有 {incompleteIndices.length} 首勾选了"收录"的歌曲存在未填写的字段（如歌名、作者、引擎等）。未填写的歌曲如果不保留排除项，将可能导致导出的数据不完整。
+                          您有 {incompleteIndices.length} 首勾选了"收录"的歌曲存在以下问题：
+                          <br/>
+                          - 存在未填写的字段（如歌名、版权等）
+                          <br/>
+                          - 或者是标签框（歌手/作者/引擎）内有文字但未按回车确认添加。
+                          <br/><br/>
+                          如果不保留排除项，将可能导致导出的数据不完整或丢失未确认的标签。
                        </DialogDescription>
                     </DialogHeader>
                     <div className="py-2">

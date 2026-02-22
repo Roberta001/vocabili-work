@@ -69,6 +69,14 @@ export default function MarkingCard({ record, include, onIncludeChange, index, s
     onUpdate(newRecord);
   };
 
+  const handleInputChange = (field: string, value: string) => {
+    const unconfirmedKey = `_unconfirmed_${field}`;
+    if (record[unconfirmedKey] !== value) {
+      const newRecord = { ...record, [unconfirmedKey]: value };
+      onUpdate(newRecord);
+    }
+  };
+
   const loadVideoPreview = async () => {
      if (videoUrl) return; // Already loaded
      
@@ -278,8 +286,10 @@ export default function MarkingCard({ record, include, onIncludeChange, index, s
                         <MarkingTags 
                            value={record[field.prop]} 
                            onChange={(val) => handleChange(field.prop, val)}
+                           onInputChange={(val) => handleInputChange(field.prop, val)}
                            type={field.search || field.prop}
                            useHint={field.type === 'tags-hint'}
+                           hasError={!!record[`_unconfirmed_${field.prop}`]}
                         />
                      )}
 

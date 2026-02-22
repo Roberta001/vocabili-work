@@ -330,6 +330,7 @@ export default function MarkingCard({ record, include, onIncludeChange, index, s
             <div className="flex gap-4 text-xs text-muted-foreground mt-2">
                <span>时长: {record.duration}</span>
                <span>分P: {record.page}</span>
+               {record.tid && <span>分区: {record.tid}</span>}
             </div>
             
             <div className="bg-muted/50 p-2 rounded text-xs text-muted-foreground max-h-16 overflow-y-auto mt-auto">

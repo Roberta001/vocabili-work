@@ -6,6 +6,32 @@ import api from "@/utils/api";
 import { cn } from "@/lib/utils";
 import { useDebounce } from "@/hooks/use-debounce";
 
+const HighlightSpaces = ({ text }: { text: string }) => {
+  if (!text) return null;
+  const match = text.match(/^(\s*)([\s\S]*?)(\s*)$/);
+  if (!match) return <>{text}</>;
+  
+  const [, leading, core, trailing] = match;
+  if (!leading && !trailing) return <>{text}</>;
+
+  const renderSpace = (sp: string) => (
+    <span 
+      className="bg-destructive/20 text-destructive font-mono px-[2px] mx-[1px] rounded-[2px] opacity-80" 
+      title="警告：包含多余的前导或后导空格"
+    >
+      {sp.replace(/ /g, '␣').replace(/\t/g, '⇥')}
+    </span>
+  );
+
+  return (
+    <>
+      {leading && renderSpace(leading)}
+      {core}
+      {trailing && renderSpace(trailing)}
+    </>
+  );
+};
+
 interface MarkingTagsProps {
   value: string; // Comma separated string "tag1、tag2"
   onChange: (value: string) => void;
@@ -102,7 +128,7 @@ export default function MarkingTags({ value, onChange, onInputChange, type, useH
        <div className="flex flex-wrap gap-2 p-2 border rounded-md min-h-[42px] items-center bg-muted/20">
           {tags.length > 0 ? tags.map((tag) => (
              <Badge key={tag} variant="secondary">
-                {svMap[tag] || tag}
+                <HighlightSpaces text={svMap[tag] || tag} />
              </Badge>
           )) : <span className="text-muted-foreground text-xs px-1">无标签</span>}
        </div>
@@ -118,7 +144,7 @@ export default function MarkingTags({ value, onChange, onInputChange, type, useH
       )}>
         {tags.map((tag) => (
           <Badge key={tag} variant="secondary" className="pr-1 h-6">
-            {tag}
+            <HighlightSpaces text={tag} />
             <button
               className="ml-1 ring-offset-background rounded-full outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
               onClick={(e) => {
@@ -157,7 +183,7 @@ export default function MarkingTags({ value, onChange, onInputChange, type, useH
                              onSelect={() => addTag(suggestion)}
                              className="cursor-pointer"
                           >
-                             {suggestion}
+                             <HighlightSpaces text={suggestion} />
                           </CommandItem>
                        ))}
                     </CommandGroup>
@@ -169,7 +195,7 @@ export default function MarkingTags({ value, onChange, onInputChange, type, useH
                         onSelect={() => addTag(inputValue)}
                         className="cursor-pointer"
                      >
-                       添加 "{inputValue}"
+                       添加 "<HighlightSpaces text={inputValue} />"
                      </CommandItem>
                    </CommandGroup>
                  )}

@@ -76,16 +76,15 @@ export default function MarkingCard({ record, include, onIncludeChange, index, s
   };
 
   const handleChange = (field: string, value: any) => {
-    const newRecord = { ...record, [field]: value };
-    onUpdate(newRecord);
+    onUpdate((prev: any) => ({ ...prev, [field]: value }));
   };
 
   const handleInputChange = (field: string, value: string) => {
     const unconfirmedKey = `_unconfirmed_${field}`;
-    if (record[unconfirmedKey] !== value) {
-      const newRecord = { ...record, [unconfirmedKey]: value };
-      onUpdate(newRecord);
-    }
+    onUpdate((prev: any) => {
+      if (prev[unconfirmedKey] === value) return prev;
+      return { ...prev, [unconfirmedKey]: value };
+    });
   };
 
   const loadVideoPreview = async () => {

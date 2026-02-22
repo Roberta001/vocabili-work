@@ -162,9 +162,13 @@ function MarkContent() {
 
   // Handle record update from card
   const handleRecordUpdate = (index: number, updatedRecord: any) => {
-     const newRecords = [...allRecords];
-     newRecords[index] = updatedRecord;
-     setAllRecords(newRecords);
+     setAllRecords(prev => {
+        const newRecords = [...prev];
+        const newObj = typeof updatedRecord === 'function' ? updatedRecord(prev[index]) : updatedRecord;
+        if (newRecords[index] === newObj) return prev;
+        newRecords[index] = newObj;
+        return newRecords;
+     });
   };
 
   const getRequiredFields = (isSvmode: boolean) => {

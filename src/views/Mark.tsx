@@ -219,11 +219,42 @@ function MarkContent() {
     setIncompleteDialogOpen(false);
   };
 
+  const getRecordIssues = (record: any) => {
+    const issues: string[] = [];
+    const reqFields = getRequiredFields(svmode);
+    const tagFields = svmode ? ['synthesizer'] : ['vocal', 'author', 'synthesizer'];
+    
+    const fieldLabels: Record<string, string> = {
+      name: '歌名',
+      vocal: '歌手',
+      author: '作者',
+      synthesizer: svmode ? '榜单' : '引擎',
+      copyright: '版权',
+      type: '类别'
+    };
+
+    reqFields.forEach(field => {
+      const val = record[field];
+      if (val === undefined || val === null || val === '') {
+        issues.push(`${fieldLabels[field]}未填写`);
+      }
+    });
+
+    tagFields.forEach(field => {
+      const val = record[`_unconfirmed_${field}`];
+      if (!!val && val.trim() !== '') {
+        issues.push(`${fieldLabels[field]}栏存在内容未确认`);
+      }
+    });
+
+    return issues.join('，');
+  };
+
   const handleAddIncompleteToBookmarks = () => {
     const bookmarksToAdd = incompleteIndices.map(idx => ({
       index: idx,
       title: allRecords[idx].title || allRecords[idx].name || '未命名',
-      note: '信息未填写完整（导出时标记）'
+      note: getRecordIssues(allRecords[idx]) || '信息未填写完整（导出时标记）'
     }));
     addBookmarksBatch(bookmarksToAdd);
     setIncompleteDialogOpen(false);

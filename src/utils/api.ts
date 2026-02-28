@@ -6,7 +6,7 @@ const BASE_URL = "https://api.vocabili.top/v2"
 
 const api = axios.create({
   baseURL: BASE_URL,
-  timeout: 20000,
+  timeout: 120000,
 });
 
 api.interceptors.request.use((config) => {

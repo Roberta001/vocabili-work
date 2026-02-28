@@ -1,293 +1,308 @@
-import { useState } from 'react';
-import api from '@/utils/api';
-import { BoardIdentity, DataIdentity, isBoardIdentity, isDataIdentity } from '@/utils/filename';
-import UploadFile from '@/components/UploadFile';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Loader2, CheckCircle2, XCircle } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { useState, useCallback } from "react";
+import api from "@/utils/api";
+import {
+  BoardIdentity,
+  DataIdentity,
+  isBoardIdentity,
+  isDataIdentity,
+} from "@/utils/filename";
+import UploadFile from "@/components/UploadFile";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Loader2, CheckCircle2, XCircle, RotateCcw } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+type Status = "idle" | "loading" | "success" | "failed";
+
+const BOARDS: Record<string, string> = {
+  "vocaloid-daily": "日刊",
+  "vocaloid-weekly": "周刊",
+  "vocaloid-monthly": "月刊",
+};
+
+const PARTS: Record<string, string> = {
+  main: "主榜",
+  new: "新曲榜",
+};
 
 export default function Upload() {
-  // Board State
-  const [boardIdentity, setBoardIdentity] = useState<BoardIdentity | null>(null);
+  const [boardIdentity, setBoardIdentity] = useState<BoardIdentity | null>(
+    null,
+  );
   const [boardDialogOpen, setBoardDialogOpen] = useState(false);
-  const [boardCheckStatus, setBoardCheckStatus] = useState<'success' | 'failed' | ''>('');
-  const [boardCheckError, setBoardCheckError] = useState('');
-  const [boardUpdateStatus, setBoardUpdateStatus] = useState<'success' | 'failed' | 'updating' | ''>('');
-  const [boardUpdateError, setBoardUpdateError] = useState('');
-  const [boardChecking, setBoardChecking] = useState(false);
-  const [boardUpdating, setBoardUpdating] = useState(false);
-  const [boardProgress, setBoardProgress] = useState('');
+  const [checkStatus, setCheckStatus] = useState<Status>("idle");
+  const [checkError, setCheckError] = useState("");
+  const [updateStatus, setUpdateStatus] = useState<Status>("idle");
+  const [updateError, setUpdateError] = useState("");
+  const [progress, setProgress] = useState("");
 
-  // Data State
   const [dataIdentity, setDataIdentity] = useState<DataIdentity | null>(null);
   const [dataDialogOpen, setDataDialogOpen] = useState(false);
-  const [dataStatus, setDataStatus] = useState<'success' | 'failed' | 'processing' | ''>('');
-  const [dataError, setDataError] = useState('');
-  // const [dataProcessing, setDataProcessing] = useState(false);
+  const [dataStatus, setDataStatus] = useState<Status>("idle");
+  const [dataError, setDataError] = useState("");
 
-  const boards: Record<string, string> = {
-    'vocaloid-daily': '日刊',
-    'vocaloid-weekly': '周刊',
-    'vocaloid-monthly': '月刊',
-  };
-
-  const parts: Record<string, string> = {
-    'main': '主榜',
-    'new': '新曲榜',
-  };
+  const resetBoard = useCallback(() => {
+    setCheckStatus("idle");
+    setCheckError("");
+    setUpdateStatus("idle");
+    setUpdateError("");
+    setProgress("");
+  }, []);
 
   const handleUploadComplete = (identity: BoardIdentity | DataIdentity) => {
     if (isBoardIdentity(identity)) {
       setBoardIdentity(identity);
-      setBoardCheckStatus('');
-      setBoardUpdateStatus('');
-      setBoardCheckError('');
-      setBoardUpdateError('');
-      setBoardProgress('');
+      resetBoard();
       setBoardDialogOpen(true);
     } else if (isDataIdentity(identity)) {
       setDataIdentity(identity);
-      setDataStatus('');
-      setDataError('');
+      setDataStatus("idle");
+      setDataError("");
       setDataDialogOpen(true);
-      handleDataProcess(identity); // Start immediately
+      runDataProcess(identity);
     }
   };
 
-  const handleBoardCheck = async () => {
+  const runCheck = async () => {
     if (!boardIdentity) return;
-    setBoardChecking(true);
+    setCheckStatus("loading");
+    setCheckError("");
     try {
-      const res = await api.checkFile(boardIdentity.board, boardIdentity.part, boardIdentity.issue);
-      if (res.detail === '') {
-        setBoardCheckStatus('success');
-        setBoardCheckError('');
+      const res = await api.checkFile(
+        boardIdentity.board,
+        boardIdentity.part,
+        boardIdentity.issue,
+      );
+      if (res.detail === "") {
+        setCheckStatus("success");
       } else {
-        setBoardCheckStatus('failed');
-        setBoardCheckError(res.detail);
+        setCheckStatus("failed");
+        setCheckError(res.detail);
       }
     } catch (err: any) {
-      setBoardCheckStatus('failed');
-      setBoardCheckError(err?.response?.data?.message || err.message || '检查失败');
-    } finally {
-      setBoardChecking(false);
+      setCheckStatus("failed");
+      setCheckError(err?.response?.data?.message || err.message || "检查失败");
     }
   };
 
-  const handleBoardUpdate = async () => {
+  const runUpdate = async () => {
     if (!boardIdentity) return;
-    setBoardUpdating(true);
-    setBoardUpdateStatus('updating');
-    setBoardProgress('');
-    
-    // Store cancel function to handle unmount/cancellation if needed
-    // For now we just run it
-    try {
-      // Wrap in promise to await completion
-      await new Promise<void>((resolve, reject) => {
-        // @ts-ignore
-        const _cancel = api.updateRanking(
-          boardIdentity.board,
-          boardIdentity.part,
-          boardIdentity.issue,
-          false,
-          {
-            onProgress: (data) => setBoardProgress(data),
-            onComplete: () => {
-              setBoardUpdateStatus('success');
-              setBoardUpdateError('');
-              resolve();
-            },
-            onError: (err) => {
-               // Only reject if it's a real error
-               // For SSE sometimes error event fires on close, handled inside api wrapper but good to be safe
-               // The api wrapper calls onError for non-closed state
-               setBoardUpdateStatus('failed');
-               // err is Event, try to get message or stringify
-               setBoardUpdateError('Connection error or closed prematurely');
-               reject(err);
-            }
-          }
-        );
-      });
-    } catch (err: any) {
-      // Error handled in callbacks mostly, but catch synchronous errors here
-      if (boardUpdateStatus !== 'success') {
-         setBoardUpdateStatus('failed');
-         setBoardUpdateError(err?.message || '更新失败');
-      }
-    } finally {
-      setBoardUpdating(false);
-    }
+    setUpdateStatus("loading");
+    setUpdateError("");
+    setProgress("");
+
+    await new Promise<void>((resolve) => {
+      api.updateRanking(
+        boardIdentity.board,
+        boardIdentity.part,
+        boardIdentity.issue,
+        false,
+        {
+          onProgress: setProgress,
+          onComplete: () => {
+            setUpdateStatus("success");
+            resolve();
+          },
+          onError: (err: any) => {
+            setUpdateStatus("failed");
+            setUpdateError(err?.message || "更新失败");
+            resolve();
+          },
+        },
+      );
+    });
   };
 
-  const handleDataProcess = async (identity: DataIdentity) => {
-    // setDataProcessing(true);
-    setDataStatus('processing');
+  const runDataProcess = async (identity: DataIdentity) => {
+    setDataStatus("loading");
+    setDataError("");
     try {
-      await api.updateSnapshot(identity.date.toFormat('yyyy-MM-dd'));
-      setDataStatus('success');
-      setDataError('');
+      await api.updateSnapshot(identity.date.toFormat("yyyy-MM-dd"));
+      setDataStatus("success");
     } catch (err: any) {
-      setDataStatus('failed');
-      setDataError(err?.response?.data?.message || err.message || '处理失败');
-    } finally {
-      // setDataProcessing(false);
+      setDataStatus("failed");
+      setDataError(err?.response?.data?.message || err.message || "处理失败");
     }
   };
 
   const closeBoardDialog = () => {
     setBoardDialogOpen(false);
-    setBoardIdentity(null);
+    if (updateStatus === "success") {
+      setBoardIdentity(null);
+      resetBoard();
+    }
   };
 
   const closeDataDialog = () => {
     setDataDialogOpen(false);
-    setDataIdentity(null);
+    if (dataStatus === "success") {
+      setDataIdentity(null);
+    }
   };
 
-
   return (
-    <div className="flex flex-col items-center p-8 w-full max-w-4xl mx-auto space-y-8">
-      <div className="text-center space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight">在线更新数据库</h1>
-        <div className="text-muted-foreground">非相关人员勿动</div>
-      </div>
-
+    <div className="flex flex-col items-center p-8 w-full max-w-xl mx-auto">
       <UploadFile onComplete={handleUploadComplete} />
 
-      {/* Board Processing Dialog */}
+      {/* 排名文件 */}
       <Dialog open={boardDialogOpen} onOpenChange={setBoardDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>排名文件处理</DialogTitle>
-            <DialogDescription>
-              确认文件信息并执行检查更新
-            </DialogDescription>
+            <DialogTitle>排名文件</DialogTitle>
           </DialogHeader>
-          
+
           {boardIdentity && (
             <div className="space-y-4">
-              <div className="bg-muted p-4 rounded-md text-sm space-y-1">
-                <div className="font-semibold mb-2">文件信息：</div>
-                <div className="flex justify-between"><span>刊物：</span><span>{boards[boardIdentity.board]}</span></div>
-                <div className="flex justify-between"><span>榜单：</span><span>{parts[boardIdentity.part]}</span></div>
-                <div className="flex justify-between"><span>期数：</span><span>{boardIdentity.issue}</span></div>
+              <div className="bg-muted p-3 rounded text-sm flex gap-4">
+                <span>{BOARDS[boardIdentity.board]}</span>
+                <span>{PARTS[boardIdentity.part]}</span>
+                <span>第 {boardIdentity.issue} 期</span>
               </div>
 
-              {/* Check Status */}
-              {boardCheckStatus && (
-                <div className={cn("p-3 rounded-md flex items-center gap-2", 
-                  boardCheckStatus === 'success' ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300" : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300"
-                )}>
-                  {boardCheckStatus === 'success' ? <CheckCircle2 className="h-5 w-5"/> : <XCircle className="h-5 w-5"/>}
-                  <div className="flex-1">
-                    {boardCheckStatus === 'success' ? "文件检查通过" : `文件检查失败：${boardCheckError}`}
-                  </div>
+              {/* 检查 */}
+              <StepRow
+                label="检查"
+                status={checkStatus}
+                error={checkError}
+                onAction={runCheck}
+                actionLabel="检查"
+              />
+
+              {/* 更新 */}
+              <StepRow
+                label="更新"
+                status={updateStatus}
+                error={updateError}
+                onAction={runUpdate}
+                actionLabel="更新"
+                disabled={checkStatus !== "success"}
+              />
+
+              {updateStatus === "loading" && progress && (
+                <div className="text-xs font-mono bg-muted p-2 rounded max-h-20 overflow-y-auto">
+                  {progress}
                 </div>
               )}
-               {boardChecking && <div className="text-blue-500 flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin"/> 检查中...</div>}
-
-
-              {/* Update Status */}
-              {boardUpdateStatus && (
-                <div className="space-y-2">
-                   <div className={cn("p-3 rounded-md flex items-start gap-2",
-                      boardUpdateStatus === 'success' ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300" :
-                      boardUpdateStatus === 'failed' ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300" :
-                      "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
-                   )}>
-                      {boardUpdateStatus === 'success' ? <CheckCircle2 className="h-5 w-5 mt-0.5"/> :
-                       boardUpdateStatus === 'failed' ? <XCircle className="h-5 w-5 mt-0.5"/> :
-                       <Loader2 className="h-5 w-5 animate-spin mt-0.5"/>
-                      }
-                      <div className="flex-1 text-sm">
-                        {boardUpdateStatus === 'success' && "数据更新成功"}
-                        {boardUpdateStatus === 'failed' && `数据更新失败：${boardUpdateError}`}
-                        {boardUpdateStatus === 'updating' && "更新中..."}
-                      </div>
-                   </div>
-                   {boardUpdateStatus === 'updating' && boardProgress && (
-                      <div className="text-xs font-mono bg-muted p-2 rounded max-h-24 overflow-y-auto whitespace-pre-wrap">
-                        {boardProgress}
-                      </div>
-                   )}
-                </div>
-              )}
-            </div>
-          )}
-
-          <DialogFooter className="sm:justify-end gap-2">
-            <Button variant="secondary" onClick={closeBoardDialog}>
-              {boardUpdateStatus === 'success' ? '关闭' : '取消'}
-            </Button>
-            
-            {!boardCheckStatus && (
-               <Button onClick={handleBoardCheck} disabled={boardChecking}>
-                 {boardChecking && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                 检查文件
-               </Button>
-            )}
-
-            {boardCheckStatus === 'success' && boardUpdateStatus !== 'success' && (
-              <Button onClick={handleBoardUpdate} disabled={boardUpdating}>
-                 {boardUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                 确定更新
-              </Button>
-            )}
-             
-            {boardUpdateStatus === 'success' && (
-               <Button variant="default" onClick={closeBoardDialog} className="bg-green-600 hover:bg-green-700">
-                 完成
-               </Button>
-            )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-       {/* Data Processing Dialog */}
-       <Dialog open={dataDialogOpen} onOpenChange={setDataDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>数据文件处理</DialogTitle>
-             <DialogDescription>
-              自动处理数据快照更新
-            </DialogDescription>
-          </DialogHeader>
-
-          {dataIdentity && (
-            <div className="space-y-4">
-              <div className="bg-muted p-4 rounded-md text-sm">
-                 <span className="font-semibold">日期：</span>
-                 {dataIdentity.date.toFormat('yyyy-MM-dd')}
-              </div>
-
-               <div className={cn("p-3 rounded-md flex items-center gap-2",
-                  dataStatus === 'success' ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300" :
-                  dataStatus === 'failed' ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300" :
-                  "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
-               )}>
-                  {dataStatus === 'success' ? <CheckCircle2 className="h-5 w-5"/> :
-                   dataStatus === 'failed' ? <XCircle className="h-5 w-5"/> :
-                   <Loader2 className="h-5 w-5 animate-spin"/>
-                  }
-                  <div className="flex-1 text-sm">
-                    {dataStatus === 'success' && "数据文件处理成功"}
-                    {dataStatus === 'failed' && `数据文件处理失败：${dataError}`}
-                    {dataStatus === 'processing' && "处理中..."}
-                  </div>
-               </div>
             </div>
           )}
 
           <DialogFooter>
-            <Button onClick={closeDataDialog} disabled={dataStatus === 'processing'}>
-              {dataStatus === 'success' ? '完成' : '关闭'}
+            <Button variant="secondary" onClick={closeBoardDialog}>
+              {updateStatus === "success" ? "完成" : "关闭"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* 数据文件 */}
+      <Dialog open={dataDialogOpen} onOpenChange={setDataDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>数据文件</DialogTitle>
+          </DialogHeader>
+
+          {dataIdentity && (
+            <div className="space-y-4">
+              <div className="bg-muted p-3 rounded text-sm">
+                {dataIdentity.date.toFormat("yyyy-MM-dd")}
+              </div>
+
+              <StepRow
+                label="处理"
+                status={dataStatus}
+                error={dataError}
+                onAction={() => runDataProcess(dataIdentity)}
+                actionLabel="重试"
+                showActionOnlyOnFail
+              />
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button
+              variant="secondary"
+              onClick={closeDataDialog}
+              disabled={dataStatus === "loading"}
+            >
+              {dataStatus === "success" ? "完成" : "关闭"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+// 步骤行组件
+function StepRow({
+  label,
+  status,
+  error,
+  onAction,
+  actionLabel,
+  disabled,
+  showActionOnlyOnFail,
+}: {
+  label: string;
+  status: Status;
+  error?: string;
+  onAction: () => void;
+  actionLabel: string;
+  disabled?: boolean;
+  showActionOnlyOnFail?: boolean;
+}) {
+  return (
+    <div
+      className={cn("space-y-1", disabled && "opacity-50 pointer-events-none")}
+    >
+      <div
+        className={cn(
+          "flex items-center justify-between p-3 rounded border",
+          status === "success" &&
+            "border-green-300 bg-green-50 dark:border-green-800 dark:bg-green-900/20",
+          status === "failed" &&
+            "border-red-300 bg-red-50 dark:border-red-800 dark:bg-red-900/20",
+        )}
+      >
+        <div className="flex items-center gap-2">
+          {status === "loading" && <Loader2 className="h-4 w-4 animate-spin" />}
+          {status === "success" && (
+            <CheckCircle2 className="h-4 w-4 text-green-600" />
+          )}
+          {status === "failed" && <XCircle className="h-4 w-4 text-red-600" />}
+          <span>{label}</span>
+        </div>
+
+        {status === "idle" && !showActionOnlyOnFail && (
+          <Button size="sm" onClick={onAction}>
+            {actionLabel}
+          </Button>
+        )}
+        {status === "loading" && (
+          <span className="text-sm text-muted-foreground">处理中...</span>
+        )}
+        {status === "failed" && (
+          <Button size="sm" variant="outline" onClick={onAction}>
+            <RotateCcw className="h-3 w-3 mr-1" />
+            重试
+          </Button>
+        )}
+        {status === "success" && (
+          <span className="text-sm text-green-600">完成</span>
+        )}
+      </div>
+
+      {error && (
+        <div className="text-xs text-red-600 bg-red-50 dark:bg-red-900/20 p-2 rounded whitespace-pre-wrap">
+          {error}
+        </div>
+      )}
     </div>
   );
 }

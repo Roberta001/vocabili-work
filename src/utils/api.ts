@@ -64,62 +64,75 @@ class Requester {
   }
 
   updateRanking(
-    board: string,
-    part: string,
-    issue: number,
-    old?: boolean,
-    handlers?: {
-      onStart?: () => void;
-      onProgress?: (data: string) => void;
-      onComplete?: (data?: string) => void;
-      onError?: (err: unknown) => void;
-    }
-  ) {
-    const url = `${BASE_URL}${Requester.endpoint.updateRanking}?board=${board}&part=${part}&issue=${issue}${old ? '&old=true' : ''}`;
-    const apiKey = localStorage.getItem("x-api-key") || "";
-
-    if (handlers?.onStart) {
-        handlers.onStart();
-    }
-
-    const abortController = new AbortController();
-
-    fetchEventSource(url, {
-      method: "GET",
-      headers: {
-        "x-api-key": apiKey,
-      },
-      signal: abortController.signal,
-      onmessage(ev) {
-        if (ev.event === "progress") {
-          handlers?.onProgress?.(ev.data);
-        } else if (ev.event === "complete") {
-          handlers?.onComplete?.(ev.data);
-          abortController.abort();
-        } else {
-          // fallback if event type is default
-          if (ev.data === "complete") {
-            handlers?.onComplete?.(ev.data);
-            abortController.abort();
-          } else if (ev.data.includes("progress")) {
-            handlers?.onProgress?.(ev.data);
-          }
-        }
-      },
-      onerror(err) {
-        handlers?.onError?.(err);
-        abortController.abort();
-        throw err; // prevent default retry
-      }
-    }).catch((err) => {
-      // Catch any unexpected errors outside the event source loop (e.g. network failure before starting)
-      if (err.name !== 'AbortError') {
-        handlers?.onError?.(err);
-      }
-    });
-
-    return () => abortController.abort(); 
+  board: string,
+  part: string,
+  issue: number,
+  old?: boolean,
+  handlers?: {
+    onStart?: () => void;
+    onProgress?: (data: string) => void;
+    onComplete?: (data?: string) => void;
+    onError?: (err: unknown) => void;
   }
+) {
+  const url = `${BASE_URL}${Requester.endpoint.updateRanking}?board=${board}&part=${part}&issue=${issue}${old ? '&old=true' : ''}`;
+  const apiKey = localStorage.getItem("x-api-key") || "";
+
+  if (handlers?.onStart) {
+    handlers.onStart();
+  }
+
+  const abortController = new AbortController();
+
+  fetchEventSource(url, {
+    method: "GET",
+    headers: {
+      "x-api-key": apiKey,
+    },
+    signal: abortController.signal,
+    
+    async onopen(response) {
+      if (response.ok) {
+        console.log("SSE 连接成功", response.status);
+        return; 
+      }
+      
+      const text = await response.text();
+      console.error("SSE 连接失败", response.status, text);
+      throw new Error(`HTTP ${response.status}: ${text}`);
+    },
+    
+    onmessage(ev) {
+      console.log("SSE 消息:", ev.event, ev.data); 
+      
+      if (ev.event === "progress") {
+        handlers?.onProgress?.(ev.data);
+      } else if (ev.event === "complete") {
+        handlers?.onComplete?.(ev.data);
+        abortController.abort();
+      } else if (ev.event === "error") {
+        handlers?.onError?.(new Error(ev.data));
+        abortController.abort();
+      }
+    },
+    
+    onerror(err) {
+      console.error("SSE 错误:", err);
+      handlers?.onError?.(err);
+      abortController.abort();
+      throw err;
+    },
+    
+    openWhenHidden: true,  
+  }).catch((err) => {
+    if (err.name !== 'AbortError') {
+      console.error("SSE catch:", err);
+      handlers?.onError?.(err);
+    }
+  });
+
+  return () => abortController.abort();
+}
 
 
   async updateSnapshot(date: string, old?: boolean) {

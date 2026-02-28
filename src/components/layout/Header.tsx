@@ -5,7 +5,6 @@ import { Settings } from "lucide-react";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -15,22 +14,9 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 
 const navs = [
-  {
-    name: '首页',
-    path: '/'
-  },
-  {
-    name: '打标',
-    path: '/mark'
-  },
-  {
-    name: '上传',
-    path: '/upload'
-  },
-  {
-    name: '编辑',
-    path: '/edit'
-  }
+  { name: "上传", path: "/" },
+  { name: "打标", path: "/mark" },
+  { name: "编辑", path: "/edit" },
 ];
 
 export default function Header() {
@@ -51,31 +37,28 @@ export default function Header() {
   };
 
   return (
-    <header className="h-10 w-full grid grid-cols-[1fr_1fr_1fr_1fr_40px] items-stretch justify-stretch border-b bg-background">
+    <header className="h-10 w-full flex items-stretch border-b bg-background">
       {navs.map((nav) => (
         <Link
           key={nav.path}
           to={nav.path}
           className={cn(
-            "flex items-center justify-center hover:bg-muted/50 transition-colors",
-            location.pathname === nav.path ? "bg-muted font-medium" : ""
+            "flex-1 flex items-center justify-center hover:bg-muted/50 transition-colors",
+            location.pathname === nav.path ? "bg-muted font-medium" : "",
           )}
         >
-          <div className="text-sm">{nav.name}</div>
+          <span className="text-sm">{nav.name}</span>
         </Link>
       ))}
       <Dialog open={isOpen} onOpenChange={handleOpenChange}>
         <DialogTrigger asChild>
-          <button className="flex items-center justify-center hover:bg-muted/50 transition-colors text-muted-foreground hover:text-foreground">
+          <button className="w-10 flex items-center justify-center hover:bg-muted/50 transition-colors text-muted-foreground hover:text-foreground">
             <Settings className="h-4 w-4" />
           </button>
         </DialogTrigger>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>设置</DialogTitle>
-            <DialogDescription>
-              配置 API Key 以便使用相关接口。
-            </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
@@ -87,7 +70,7 @@ export default function Header() {
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
                 className="col-span-3"
-                placeholder="请输入 x-api-key"
+                placeholder="x-api-key"
               />
             </div>
           </div>

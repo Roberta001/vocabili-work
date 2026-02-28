@@ -2,7 +2,7 @@ import axios from "axios";
 import { fetchEventSource } from "@microsoft/fetch-event-source";
 import type { SongInfo, VideoInfo } from "@/utils/types";
 
-const BASE_URL = "https://api.vocabili.top/v2"
+const BASE_URL = "https://api.vocabili.top/v2";
 
 const api = axios.create({
   baseURL: BASE_URL,
@@ -31,7 +31,7 @@ class Requester {
     selectArtist: `/select/artist`,
     selectSong: `/select/song`,
     selectVideo: `/select/video`,
-  }
+  };
 
   constructor() {}
 
@@ -39,7 +39,8 @@ class Requester {
     file: File,
     handlers?: {
       onProgress?: (progress: number) => void;
-    }) {
+    },
+  ) {
     const formData = new FormData();
     formData.append("file", file);
     return api.post(Requester.endpoint.uploadFile, formData, {
@@ -52,7 +53,7 @@ class Requester {
           handlers?.onProgress?.(progress);
         }
       },
-      timeout: 100000
+      timeout: 100000,
     });
   }
 
@@ -64,132 +65,194 @@ class Requester {
   }
 
   updateRanking(
-  board: string,
-  part: string,
-  issue: number,
-  old?: boolean,
-  handlers?: {
-    onStart?: () => void;
-    onProgress?: (data: string) => void;
-    onComplete?: (data?: string) => void;
-    onError?: (err: unknown) => void;
-  }
-) {
-  const url = `${BASE_URL}${Requester.endpoint.updateRanking}?board=${board}&part=${part}&issue=${issue}${old ? '&old=true' : ''}`;
-  const apiKey = localStorage.getItem("x-api-key") || "";
+    board: string,
+    part: string,
+    issue: number,
+    old?: boolean,
+    handlers?: {
+      onStart?: () => void;
+      onProgress?: (data: string) => void;
+      onComplete?: (data?: string) => void;
+      onError?: (err: unknown) => void;
+    },
+  ) {
+    const url = `${BASE_URL}${Requester.endpoint.updateRanking}?board=${board}&part=${part}&issue=${issue}${old ? "&old=true" : ""}`;
+    const apiKey = localStorage.getItem("x-api-key") || "";
 
-  if (handlers?.onStart) {
-    handlers.onStart();
-  }
-
-  const abortController = new AbortController();
-
-  fetchEventSource(url, {
-    method: "GET",
-    headers: {
-      "x-api-key": apiKey,
-    },
-    signal: abortController.signal,
-    
-    async onopen(response) {
-      if (response.ok) {
-        console.log("SSE 连接成功", response.status);
-        return; 
-      }
-      
-      const text = await response.text();
-      console.error("SSE 连接失败", response.status, text);
-      throw new Error(`HTTP ${response.status}: ${text}`);
-    },
-    
-    onmessage(ev) {
-      console.log("SSE 消息:", ev.event, ev.data); 
-      
-      if (ev.event === "progress") {
-        handlers?.onProgress?.(ev.data);
-      } else if (ev.event === "complete") {
-        handlers?.onComplete?.(ev.data);
-        abortController.abort();
-      } else if (ev.event === "error") {
-        handlers?.onError?.(new Error(ev.data));
-        abortController.abort();
-      }
-    },
-    
-    onerror(err) {
-      console.error("SSE 错误:", err);
-      handlers?.onError?.(err);
-      abortController.abort();
-      throw err;
-    },
-    
-    openWhenHidden: true,  
-  }).catch((err) => {
-    if (err.name !== 'AbortError') {
-      console.error("SSE catch:", err);
-      handlers?.onError?.(err);
+    if (handlers?.onStart) {
+      handlers.onStart();
     }
-  });
 
-  return () => abortController.abort();
-}
+    const abortController = new AbortController();
 
+    fetchEventSource(url, {
+      method: "GET",
+      headers: {
+        "x-api-key": apiKey,
+      },
+      signal: abortController.signal,
 
-  async updateSnapshot(date: string, old?: boolean) {
-    const res = await api.get(Requester.endpoint.updateSnapshot, {
-      params: { date, old },
-      timeout: 100000, 
+      async onopen(response) {
+        if (response.ok) {
+          console.log("SSE 连接成功", response.status);
+          return;
+        }
+
+        const text = await response.text();
+        console.error("SSE 连接失败", response.status, text);
+        throw new Error(`HTTP ${response.status}: ${text}`);
+      },
+
+      onmessage(ev) {
+        console.log("SSE 消息:", ev.event, ev.data);
+
+        if (ev.event === "progress") {
+          handlers?.onProgress?.(ev.data);
+        } else if (ev.event === "complete") {
+          handlers?.onComplete?.(ev.data);
+          abortController.abort();
+        } else if (ev.event === "error") {
+          handlers?.onError?.(new Error(ev.data));
+          abortController.abort();
+        }
+      },
+
+      onerror(err) {
+        console.error("SSE 错误:", err);
+        handlers?.onError?.(err);
+        abortController.abort();
+        throw err;
+      },
+
+      openWhenHidden: true,
+    }).catch((err) => {
+      if (err.name !== "AbortError") {
+        console.error("SSE catch:", err);
+        handlers?.onError?.(err);
+      }
     });
-    return res.data;
+
+    return () => abortController.abort();
   }
 
+  updateSnapshot(
+    date: string,
+    old?: boolean,
+    handlers?: {
+      onStart?: () => void;
+      onProgress?: (data: string) => void;
+      onComplete?: (data?: string) => void;
+      onError?: (err: unknown) => void;
+    },
+  ) {
+    const url = `${BASE_URL}${Requester.endpoint.updateSnapshot}?date=${date}${old ? "&old=true" : ""}`;
+    const apiKey = localStorage.getItem("x-api-key") || "";
+
+    handlers?.onStart?.();
+
+    const abortController = new AbortController();
+
+    fetchEventSource(url, {
+      method: "GET",
+      headers: {
+        "x-api-key": apiKey,
+      },
+      signal: abortController.signal,
+
+      async onopen(response) {
+        if (response.ok) {
+          console.log("SSE 连接成功");
+          return;
+        }
+        const text = await response.text();
+        throw new Error(`HTTP ${response.status}: ${text}`);
+      },
+
+      onmessage(ev) {
+        console.log("SSE:", ev.event, ev.data);
+        if (ev.event === "progress") {
+          handlers?.onProgress?.(ev.data);
+        } else if (ev.event === "complete") {
+          handlers?.onComplete?.(ev.data);
+          abortController.abort();
+        } else if (ev.event === "error") {
+          handlers?.onError?.(new Error(ev.data));
+          abortController.abort();
+        }
+      },
+
+      onerror(err) {
+        console.error("SSE 错误:", err);
+        handlers?.onError?.(err);
+        abortController.abort();
+        throw err;
+      },
+
+      openWhenHidden: true,
+    }).catch((err) => {
+      if (err.name !== "AbortError") {
+        handlers?.onError?.(err);
+      }
+    });
+
+    return () => abortController.abort();
+  }
 
   async editArtistCheck(type: string, id: number, name: string) {
-    const res = await api.post(Requester.endpoint.editArtistCheck, { type, id, name });
-    return res.data
+    const res = await api.post(Requester.endpoint.editArtistCheck, {
+      type,
+      id,
+      name,
+    });
+    return res.data;
   }
 
   async editArtistConfirm(task_id: string) {
     return api.post(Requester.endpoint.editArtistConfirm, { task_id });
   }
 
-  async search(type: string, keyword: string, page = 1, pageSize = 20): Promise<any> {
-    const res =  await api.get(Requester.endpoint.search(type), {
-      params: { keyword, page, page_size: pageSize }
-    })
-    return res.data
+  async search(
+    type: string,
+    keyword: string,
+    page = 1,
+    pageSize = 20,
+  ): Promise<any> {
+    const res = await api.get(Requester.endpoint.search(type), {
+      params: { keyword, page, page_size: pageSize },
+    });
+    return res.data;
   }
 
   async selectArtist(type: string, id: number) {
     const res = await api.get(Requester.endpoint.selectArtist, {
-      params: { type, id }
+      params: { type, id },
     });
-    return res.data
+    return res.data;
   }
 
-  async selectSong(id: number): Promise<{data: SongInfo}> {
+  async selectSong(id: number): Promise<{ data: SongInfo }> {
     const res = await api.get(Requester.endpoint.selectSong, {
-      params: { id }
+      params: { id },
     });
-    return res.data
+    return res.data;
   }
 
   async editSong(song: SongInfo) {
     // Some APIs expect ID in URL or query, others in body. Assuming body based on usage.
     const res = await api.post(Requester.endpoint.editSong, song);
-    return res.data
+    return res.data;
   }
 
-  async selectVideo(bvid: string): Promise<{data: VideoInfo}> {
+  async selectVideo(bvid: string): Promise<{ data: VideoInfo }> {
     const res = await api.get(Requester.endpoint.selectVideo, {
-      params: { bvid }
+      params: { bvid },
     });
-    return res.data
+    return res.data;
   }
 
   async editVideo(video: VideoInfo) {
     const res = await api.post(Requester.endpoint.editVideo, video);
-    return res.data
+    return res.data;
   }
 }
 

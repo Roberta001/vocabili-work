@@ -14,7 +14,12 @@ interface MarkingNameInputProps {
   hasError?: boolean;
 }
 
-export default function MarkingNameInput({ value, onChange, className, hasError }: MarkingNameInputProps) {
+export default function MarkingNameInput({
+  value,
+  onChange,
+  className,
+  hasError,
+}: MarkingNameInputProps) {
   const [open, setOpen] = useState(false);
   const [inputValue, setInputValue] = useState(value || "");
   const [suggestions, setSuggestions] = useState<SongInfo[]>([]);
@@ -29,7 +34,10 @@ export default function MarkingNameInput({ value, onChange, className, hasError 
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+      if (
+        wrapperRef.current &&
+        !wrapperRef.current.contains(event.target as Node)
+      ) {
         setOpen(false);
       }
     };
@@ -43,7 +51,8 @@ export default function MarkingNameInput({ value, onChange, className, hasError 
     // Only search if input is long enough and user is typing (open is true usually means focus)
     if (debouncedInput && debouncedInput.length >= 1 && open) {
       setLoading(true);
-      api.search('song', debouncedInput)
+      api
+        .search("song", debouncedInput)
         .then((res: any) => {
           if (res.data && Array.isArray(res.data)) {
             setSuggestions(res.data);
@@ -70,10 +79,15 @@ export default function MarkingNameInput({ value, onChange, className, hasError 
     setOpen(false);
   };
 
-  const exactMatch = suggestions.find(s => s.name === inputValue || s.display_name === inputValue);
+  const exactMatch = suggestions.find(
+    (s) => s.name === inputValue || s.display_name === inputValue,
+  );
 
   return (
-    <div className={cn("flex gap-2 relative w-full", className)} ref={wrapperRef}>
+    <div
+      className={cn("flex gap-2 relative w-full", className)}
+      ref={wrapperRef}
+    >
       <div className="relative w-full">
         <Input
           value={inputValue}
@@ -87,58 +101,81 @@ export default function MarkingNameInput({ value, onChange, className, hasError 
             }
           }}
           onKeyDown={(e) => {
-            if (e.key === 'Enter') {
+            if (e.key === "Enter") {
               onChange(inputValue);
               setOpen(false);
             }
           }}
           onFocus={() => setOpen(true)}
-          className={cn("h-9 w-full", hasError && "border-destructive focus-visible:ring-destructive")}
+          className={cn(
+            "h-9 w-full",
+            hasError && "border-destructive focus-visible:ring-destructive",
+          )}
           placeholder="输入歌曲名称..."
         />
-        
+
         {open && (suggestions.length > 0 || loading) && (
           <div className="absolute top-full left-0 z-50 w-full mt-1 rounded-md border bg-popover text-popover-foreground shadow-md outline-none animate-in fade-in-0 zoom-in-95 overflow-hidden">
-             <div className="max-h-[300px] overflow-y-auto p-1 bg-background">
-                {loading && (
-                   <div className="flex items-center justify-center p-4 text-sm text-muted-foreground gap-2">
-                     <Loader2 className="h-4 w-4 animate-spin" />
-                     <span>搜索中...</span>
-                   </div>
-                )}
-                
-                {!loading && suggestions.length > 0 && (
-                  <div className="py-1">
-                    <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">搜索结果</div>
-                    {suggestions.map((song) => (
-                      <div
-                        key={song.id}
-                        onClick={() => handleSelect(song)}
-                        className="cursor-pointer hover:bg-accent hover:text-accent-foreground px-2 py-2 rounded-sm text-sm flex flex-col items-start gap-0.5"
-                      >
-                        <div className="font-medium">{song.display_name || song.name}</div>
-                        <div className="text-xs text-muted-foreground flex items-center gap-2">
-                          <span className="bg-muted px-1 rounded">{song.type}</span>
-                          {song.producers && song.producers.length > 0 && <span>P主: {song.producers.map((p: any) => p.name).join(', ')}</span>}
-                        </div>
-                      </div>
-                    ))}
+            <div className="max-h-[300px] overflow-y-auto p-1 bg-background">
+              {loading && (
+                <div className="flex items-center justify-center p-4 text-sm text-muted-foreground gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>搜索中...</span>
+                </div>
+              )}
+
+              {!loading && suggestions.length > 0 && (
+                <div className="py-1">
+                  <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
+                    搜索结果
                   </div>
-                )}
-                
-                {!loading && suggestions.length === 0 && inputValue && (
-                   <div className="p-2 text-sm text-muted-foreground text-center">
-                     未找到相关歌曲
-                   </div>
-                )}
-             </div>
+                  {suggestions.map((song) => (
+                    <div
+                      key={song.id}
+                      onClick={() => handleSelect(song)}
+                      className="cursor-pointer hover:bg-accent hover:text-accent-foreground px-2 py-2 rounded-sm text-sm flex flex-col items-start gap-0.5"
+                    >
+                      <div className="font-medium">
+                        {song.display_name || song.name}
+                      </div>
+                      <div className="text-xs text-muted-foreground flex items-center gap-2">
+                        <span className="bg-muted px-1 rounded">
+                          {song.type}
+                        </span>
+                        {song.producers && song.producers.length > 0 && (
+                          <span>
+                            P主:{" "}
+                            {song.producers.map((p: any) => p.name).join(", ")}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {!loading && suggestions.length === 0 && inputValue && (
+                <div className="p-2 text-sm text-muted-foreground text-center">
+                  未找到相关歌曲
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
 
       {exactMatch && (
-        <Button size="icon" variant="ghost" className="h-9 w-9 shrink-0" asChild>
-          <a href={`https://vocabili.top/song/${exactMatch.id}`} target="_blank" rel="noopener noreferrer">
+        <Button
+          size="icon"
+          variant="ghost"
+          className="h-9 w-9 shrink-0"
+          asChild
+        >
+          <a
+            href={`https://vocabili.top/song/${exactMatch.id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
             <ExternalLink className="h-4 w-4" />
           </a>
         </Button>

@@ -1,24 +1,36 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import api from '@/utils/api';
-import type { VideoInfo, Copyright } from '@/utils/types';
+import api from "@/utils/api";
+import type { VideoInfo, Copyright } from "@/utils/types";
 
 const copyrightOptions = [
-  { label: '自制', value: 1 },
-  { label: '转载', value: 2 },
-  { label: '薛定谔态', value: 3 },
-  { label: '转载投自制', value: 101 },
-  { label: '自制投转载', value: 100 }
+  { label: "自制", value: 1 },
+  { label: "转载", value: 2 },
+  { label: "薛定谔态", value: 3 },
+  { label: "转载投自制", value: 101 },
+  { label: "自制投转载", value: 100 },
 ];
 
 export default function EditVideo() {
-  const [searchBvid, setSearchBvid] = useState('');
+  const [searchBvid, setSearchBvid] = useState("");
   const [searching, setSearching] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [videoInfo, setVideoInfo] = useState<VideoInfo | null>(null);
@@ -31,13 +43,13 @@ export default function EditVideo() {
   }, [videoInfo, originalVideo]);
 
   const getCopyrightLabel = (copyright?: Copyright) => {
-    const option = copyrightOptions.find(opt => opt.value === copyright);
-    return option?.label || '未知';
+    const option = copyrightOptions.find((opt) => opt.value === copyright);
+    return option?.label || "未知";
   };
 
   const handleSearch = async () => {
     if (!searchBvid.trim()) {
-      toast.warning('请输入视频BV号');
+      toast.warning("请输入视频BV号");
       return;
     }
 
@@ -46,9 +58,10 @@ export default function EditVideo() {
       const result = await api.selectVideo(searchBvid);
       setVideoInfo({ ...result.data });
       setOriginalVideo({ ...result.data });
-      toast.success('视频信息获取成功');
+      toast.success("视频信息获取成功");
     } catch (error: any) {
-      const errorMsg = error.response?.data?.message || error.message || '获取视频信息失败';
+      const errorMsg =
+        error.response?.data?.message || error.message || "获取视频信息失败";
       toast.error(errorMsg);
       setVideoInfo(null);
       setOriginalVideo(null);
@@ -59,22 +72,22 @@ export default function EditVideo() {
 
   const handleSubmit = () => {
     if (!videoInfo) {
-      toast.warning('没有可提交的视频信息');
+      toast.warning("没有可提交的视频信息");
       return;
     }
 
     if (!videoInfo.title.trim()) {
-      toast.warning('请输入视频标题');
+      toast.warning("请输入视频标题");
       return;
     }
 
     if (!videoInfo.copyright) {
-      toast.warning('请选择版权类型');
+      toast.warning("请选择版权类型");
       return;
     }
 
     if (!hasChanges) {
-      toast.warning('没有检测到任何变化');
+      toast.warning("没有检测到任何变化");
       return;
     }
 
@@ -83,14 +96,14 @@ export default function EditVideo() {
 
   const confirmEdit = async () => {
     if (!videoInfo) {
-      toast.error('视频信息不存在');
+      toast.error("视频信息不存在");
       return;
     }
 
     try {
       setSubmitting(true);
       await api.editVideo(videoInfo);
-      toast.success('视频信息更新成功');
+      toast.success("视频信息更新成功");
       setDialogVisible(false);
 
       if (videoInfo.bvid) {
@@ -99,7 +112,8 @@ export default function EditVideo() {
         setOriginalVideo({ ...result.data });
       }
     } catch (error: any) {
-      const errorMsg = error.response?.data?.detail || error.message || '更新视频信息失败';
+      const errorMsg =
+        error.response?.data?.detail || error.message || "更新视频信息失败";
       toast.error(errorMsg);
     } finally {
       setSubmitting(false);
@@ -110,7 +124,9 @@ export default function EditVideo() {
     <div className="p-5 max-w-2xl mx-auto">
       <Card>
         <CardHeader>
-          <CardTitle className="text-xl font-bold text-center">编辑视频信息</CardTitle>
+          <CardTitle className="text-xl font-bold text-center">
+            编辑视频信息
+          </CardTitle>
         </CardHeader>
         <CardContent>
           {/* Search Area */}
@@ -123,11 +139,11 @@ export default function EditVideo() {
                 onChange={(e) => setSearchBvid(e.target.value)}
                 className="flex-1"
               />
-              <Button 
-                onClick={handleSearch} 
+              <Button
+                onClick={handleSearch}
                 disabled={searching || !searchBvid.trim()}
               >
-                {searching ? '搜索中...' : '搜索'}
+                {searching ? "搜索中..." : "搜索"}
               </Button>
             </div>
           </div>
@@ -142,25 +158,35 @@ export default function EditVideo() {
 
               <div>
                 <Label className="mb-2 block">视频标题：</Label>
-                <Input 
-                  value={videoInfo.title} 
+                <Input
+                  value={videoInfo.title}
                   placeholder="请输入视频标题"
-                  onChange={(e) => setVideoInfo({...videoInfo, title: e.target.value})}
+                  onChange={(e) =>
+                    setVideoInfo({ ...videoInfo, title: e.target.value })
+                  }
                 />
               </div>
 
               <div>
                 <Label className="mb-2 block">版权类型：</Label>
-                <Select 
-                  value={String(videoInfo.copyright)} 
-                  onValueChange={(val) => setVideoInfo({...videoInfo, copyright: parseInt(val) as Copyright})}
+                <Select
+                  value={String(videoInfo.copyright)}
+                  onValueChange={(val) =>
+                    setVideoInfo({
+                      ...videoInfo,
+                      copyright: parseInt(val) as Copyright,
+                    })
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="请选择版权类型" />
                   </SelectTrigger>
                   <SelectContent>
                     {copyrightOptions.map((option) => (
-                      <SelectItem key={option.value} value={String(option.value)}>
+                      <SelectItem
+                        key={option.value}
+                        value={String(option.value)}
+                      >
                         {option.label}
                       </SelectItem>
                     ))}
@@ -168,9 +194,9 @@ export default function EditVideo() {
                 </Select>
               </div>
 
-              <Button 
-                className="w-full" 
-                onClick={handleSubmit} 
+              <Button
+                className="w-full"
+                onClick={handleSubmit}
                 disabled={submitting}
               >
                 提交更新
@@ -194,18 +220,26 @@ export default function EditVideo() {
             {videoInfo?.title !== originalVideo?.title && (
               <div className="flex items-center">
                 <span className="w-24 font-medium">视频标题：</span>
-                <span className="text-gray-500 line-through mr-2">{originalVideo?.title}</span>
+                <span className="text-gray-500 line-through mr-2">
+                  {originalVideo?.title}
+                </span>
                 <span className="mr-2">→</span>
-                <span className="text-blue-500 font-medium">{videoInfo?.title}</span>
+                <span className="text-blue-500 font-medium">
+                  {videoInfo?.title}
+                </span>
               </div>
             )}
 
             {videoInfo?.copyright !== originalVideo?.copyright && (
               <div className="flex items-center">
                 <span className="w-24 font-medium">版权类型：</span>
-                <span className="text-gray-500 line-through mr-2">{getCopyrightLabel(originalVideo?.copyright)}</span>
+                <span className="text-gray-500 line-through mr-2">
+                  {getCopyrightLabel(originalVideo?.copyright)}
+                </span>
                 <span className="mr-2">→</span>
-                <span className="text-blue-500 font-medium">{getCopyrightLabel(videoInfo?.copyright)}</span>
+                <span className="text-blue-500 font-medium">
+                  {getCopyrightLabel(videoInfo?.copyright)}
+                </span>
               </div>
             )}
 
@@ -216,9 +250,11 @@ export default function EditVideo() {
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogVisible(false)}>取消</Button>
+            <Button variant="outline" onClick={() => setDialogVisible(false)}>
+              取消
+            </Button>
             <Button onClick={confirmEdit} disabled={submitting}>
-              {submitting ? '更新中...' : '确认更新'}
+              {submitting ? "更新中..." : "确认更新"}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -12,6 +12,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription, // ← 加这个
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -46,6 +47,7 @@ export default function Upload() {
   const [dataDialogOpen, setDataDialogOpen] = useState(false);
   const [dataStatus, setDataStatus] = useState<Status>("idle");
   const [dataError, setDataError] = useState("");
+  const [dataProgress, setDataProgress] = useState("");
 
   const resetBoard = useCallback(() => {
     setCheckStatus("idle");
@@ -64,6 +66,7 @@ export default function Upload() {
       setDataIdentity(identity);
       setDataStatus("idle");
       setDataError("");
+      setDataProgress("");
       setDataDialogOpen(true);
       runDataProcess(identity);
     }
@@ -122,13 +125,22 @@ export default function Upload() {
   const runDataProcess = async (identity: DataIdentity) => {
     setDataStatus("loading");
     setDataError("");
-    try {
-      await api.updateSnapshot(identity.date.toFormat("yyyy-MM-dd"));
-      setDataStatus("success");
-    } catch (err: any) {
-      setDataStatus("failed");
-      setDataError(err?.response?.data?.message || err.message || "处理失败");
-    }
+    setDataProgress("");
+
+    await new Promise<void>((resolve) => {
+      api.updateSnapshot(identity.date.toFormat("yyyy-MM-dd"), false, {
+        onProgress: (data) => setDataProgress(data),
+        onComplete: () => {
+          setDataStatus("success");
+          resolve();
+        },
+        onError: (err: any) => {
+          setDataStatus("failed");
+          setDataError(err?.message || "处理失败");
+          resolve();
+        },
+      });
+    });
   };
 
   const closeBoardDialog = () => {
@@ -155,6 +167,7 @@ export default function Upload() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>排名文件</DialogTitle>
+            <DialogDescription>检查并更新排名数据</DialogDescription>
           </DialogHeader>
 
           {boardIdentity && (
@@ -165,7 +178,6 @@ export default function Upload() {
                 <span>第 {boardIdentity.issue} 期</span>
               </div>
 
-              {/* 检查 */}
               <StepRow
                 label="检查"
                 status={checkStatus}
@@ -174,7 +186,6 @@ export default function Upload() {
                 actionLabel="检查"
               />
 
-              {/* 更新 */}
               <StepRow
                 label="更新"
                 status={updateStatus}
@@ -205,6 +216,7 @@ export default function Upload() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>数据文件</DialogTitle>
+            <DialogDescription>导入快照数据</DialogDescription>
           </DialogHeader>
 
           {dataIdentity && (
@@ -221,6 +233,12 @@ export default function Upload() {
                 actionLabel="重试"
                 showActionOnlyOnFail
               />
+
+              {dataStatus === "loading" && dataProgress && (
+                <div className="text-xs font-mono bg-muted p-2 rounded max-h-32 overflow-y-auto whitespace-pre-wrap">
+                  {dataProgress}
+                </div>
+              )}
             </div>
           )}
 

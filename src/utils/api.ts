@@ -2,7 +2,7 @@ import axios from "axios";
 import { fetchEventSource } from "@microsoft/fetch-event-source";
 import type { SongInfo, VideoInfo } from "@/utils/types";
 
-const BASE_URL = "https://cors.vocabili.top/https://api.vocabili.top/v2"
+const BASE_URL = "https://api.vocabili.top/v2"
 
 const api = axios.create({
   baseURL: BASE_URL,
